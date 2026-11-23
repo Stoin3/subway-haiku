@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Metro Rush 3D</title>
+  <meta name="description" content="Ontwijk de metrotreinen, verzamel zo veel mogelijk muntjes en verbreek je highscore.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%23ffc928' stroke='%23b07d00'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="flash"></div>
+
+  <div id="fatal" class="fatal hidden" role="alert"></div>
+
+  <!-- HUD tijdens het spelen -->
+  <header id="hud" class="hud hidden">
+    <div class="hud-left">
+      <div class="stat big">
+        <span class="label">Score</span>
+        <span id="hud-score" class="value">0</span>
+      </div>
+      <div class="stat">
+        <span class="coin-icon" aria-hidden="true"></span>
+        <span id="hud-coins" class="value">0</span>
+      </div>
+      <div class="stat small">
+        <span id="hud-dist">0 m</span>
+        <span class="dot" aria-hidden="true">•</span>
+        <span id="hud-speed">0 km/u</span>
+      </div>
+      <div class="stat small">Beste: <span id="hud-best">0</span></div>
+    </div>
+    <div class="hud-right">
+      <button id="btn-mute" class="pill-btn" type="button">Geluid aan</button>
+      <button id="btn-pause" class="pill-btn" type="button" aria-label="Pauze">❚❚</button>
+    </div>
+  </header>
+
+  <!-- Startscherm met highscores -->
+  <section id="menu" class="overlay" aria-labelledby="title">
+    <div class="card">
+      <h1 id="title" class="logo">
+        <span class="logo-metro">METRO</span>
+        <span class="logo-rush">RUSH</span>
+        <span class="logo-3d">3D</span>
+      </h1>
+      <p class="tagline">Ontwijk de treinen, spring over de barrières en verzamel zo veel mogelijk muntjes. Hoe langer je overleeft, hoe sneller het gaat!</p>
+
+      <button id="btn-start" class="btn btn-primary" type="button">▶ Start</button>
+
+      <div class="best-banner">
+        <span>🏆 Beste score</span>
+        <strong id="menu-best">0</strong>
+      </div>
+
+      <h2 class="section-title">Highscores</h2>
+      <ol id="score-list" class="score-list"></ol>
+      <p id="score-empty" class="muted">Nog geen scores. Speel je eerste run!</p>
+
+      <div class="row">
+        <button id="btn-mute-menu" class="btn btn-ghost" type="button">Geluid: aan</button>
+        <button id="btn-clear" class="btn btn-ghost" type="button">Wis highscores</button>
+      </div>
+
+      <div class="howto">
+        <h2 class="section-title">Besturing</h2>
+        <ul class="controls">
+          <li><span class="keys"><kbd>←</kbd><kbd>→</kbd> of <kbd>A</kbd><kbd>D</kbd></span> van baan wisselen</li>
+          <li><span class="keys"><kbd>↑</kbd> <kbd>W</kbd> <kbd>Spatie</kbd></span> springen</li>
+          <li><span class="keys"><kbd>↓</kbd> <kbd>S</kbd></span> snel omlaag in de lucht</li>
+          <li><span class="keys"><kbd>P</kbd> <kbd>Esc</kbd></span> pauze · <kbd>M</kbd> geluid</li>
+          <li><span class="keys">Telefoon</span> swipe links, rechts, omhoog of omlaag; tik om te springen</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pauze -->
+  <section id="pause" class="overlay hidden" aria-labelledby="pause-title">
+    <div class="card small-card">
+      <h2 id="pause-title" class="card-title">Pauze</h2>
+      <button id="btn-resume" class="btn btn-primary" type="button">▶ Verder spelen</button>
+      <button id="btn-menu-pause" class="btn btn-ghost" type="button">Naar startscherm</button>
+    </div>
+  </section>
+
+  <!-- Game over -->
+  <section id="over" class="overlay hidden" aria-labelledby="over-title">
+    <div class="card">
+      <h2 id="over-title" class="card-title">Game over</h2>
+      <p id="over-reason" class="reason"></p>
+      <p id="over-record" class="record hidden">✨ Nieuw record!</p>
+
+      <div class="result">
+        <div class="result-main">
+          <span class="label">Score</span>
+          <span id="over-score" class="result-score">0</span>
+        </div>
+        <div class="result-grid">
+          <div><span class="label">Muntjes</span><strong id="over-coins">0</strong></div>
+          <div><span class="label">Afstand</span><strong id="over-dist">0 m</strong></div>
+          <div><span class="label">Beste</span><strong id="over-best">0</strong></div>
+        </div>
+      </div>
+
+      <button id="btn-retry" class="btn btn-primary" type="button">↻ Opnieuw</button>
+      <button id="btn-menu-over" class="btn btn-ghost" type="button">Highscores bekijken</button>
+    </div>
+  </section>
+
+  <script type="module">
+    // Three.js (ES-module build) laden en beschikbaar maken als window.THREE.
+    // Daarna pas de gewone scripts van het spel starten.
+    var THREE = null;
+    try {
+      THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
+    } catch (err) {
+      THREE = null;
+    }
+    window.THREE = THREE;
+
+    function loadScript(src) {
+      return new Promise(function (resolve) {
+        var s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = resolve;
+        document.body.appendChild(s);
+      });
+    }
+    loadScript('js/models.js').then(function () { return loadScript('js/game.js'); });
+  </script>
+</body>
+</html>
